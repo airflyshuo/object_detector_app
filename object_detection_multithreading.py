@@ -74,10 +74,14 @@ def worker(input_q, output_q):
 
     fps = FPS().start()
     while True:
+        t = time.time()
+
         fps.update()
         frame = input_q.get()
         frame_rgb = cv2.cvtColor(frame, cv2.COLOR_BGR2RGB)
         output_q.put(detect_objects(frame_rgb, sess, detection_graph))
+
+        print('[INFO] detect elapsed time: {:.0f} ms'.format((time.time() - t) * 1000))
 
     fps.stop()
     sess.close()
@@ -86,13 +90,14 @@ def worker(input_q, output_q):
 if __name__ == '__main__':
     parser = argparse.ArgumentParser()
     parser.add_argument('-strin', '--stream-input', dest="stream_in", action='store', type=str, default=None)
-    parser.add_argument('-src', '--source', dest='video_source', type=int,
-                        default=0, help='Device index of the camera.')
+    parser.add_argument('-src', '--source', dest='video_source', type=str,
+                        default="highwayI_raw.avi", help='Device index of the camera.')
     parser.add_argument('-wd', '--width', dest='width', type=int,
-                        default=640, help='Width of the frames in the video stream.')
+                        default=320, help='Width of the frames in the video stream.')
     parser.add_argument('-ht', '--height', dest='height', type=int,
-                        default=480, help='Height of the frames in the video stream.')
-    parser.add_argument('-strout','--stream-output', dest="stream_out", help='The URL to send the livestreamed object detection to.')
+                        default=240, help='Height of the frames in the video stream.')
+    parser.add_argument('-strout', '--stream-output', dest="stream_out",
+                        help='The URL to send the livestreamed object detection to.')
     args = parser.parse_args()
 
     input_q = Queue(1)  # fps is better if queue is higher but then more lags
@@ -108,15 +113,13 @@ if __name__ == '__main__':
     else:
         print('Reading from webcam.')
         video_capture = WebcamVideoStream(src=args.video_source,
-                                      width=args.width,
-                                      height=args.height).start()
+                                          width=args.width,
+                                          height=args.height).start()
     fps = FPS().start()
 
     while True:
         frame = video_capture.read()
         input_q.put(frame)
-
-        t = time.time()
 
         if output_q.empty():
             pass  # fill up queue
@@ -128,7 +131,7 @@ if __name__ == '__main__':
             class_colors = data['class_colors']
             for point, name, color in zip(rec_points, class_names, class_colors):
                 cv2.rectangle(frame, (int(point['xmin'] * args.width), int(point['ymin'] * args.height)),
-                              (int(point['xmax'] * args.width), int(point['ymax'] * args.height)), color, 3)
+                              (int(point['xmax'] * args.width), int(point['ymax'] * args.height)), color, 1)
                 cv2.rectangle(frame, (int(point['xmin'] * args.width), int(point['ymin'] * args.height)),
                               (int(point['xmin'] * args.width) + len(name[0]) * 6,
                                int(point['ymin'] * args.height) - 10), color, -1, cv2.LINE_AA)
@@ -140,8 +143,6 @@ if __name__ == '__main__':
                 cv2.imshow('Video', frame)
 
         fps.update()
-
-        print('[INFO] elapsed time: {:.2f}'.format(time.time() - t))
 
         if cv2.waitKey(1) & 0xFF == ord('q'):
             break

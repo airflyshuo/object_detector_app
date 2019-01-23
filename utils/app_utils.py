@@ -129,6 +129,8 @@ class WebcamVideoStream:
 		self.stream.set(cv2.CAP_PROP_FRAME_HEIGHT, height)
 		(self.grabbed, self.frame) = self.stream.read()
 
+		self.frameRate = self.stream.get(cv2.CAP_PROP_FPS)
+		print('FPS of source video is', self.frameRate)
 		# initialize the variable used to indicate if the thread should
 		# be stopped
 		self.stopped = False
@@ -145,6 +147,7 @@ class WebcamVideoStream:
 			if self.stopped:
 				return
 
+			cv2.waitKey(int(1000 / self.frameRate) * 5)
 			# otherwise, read the next frame from the stream
 			(self.grabbed, self.frame) = self.stream.read()
 
